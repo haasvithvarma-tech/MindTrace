@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard-card">
+    <h1 class="dashboard-title">MindTrace</h1>
+    <p class="welcome-message">Welcome, <strong>{{ username }}</strong>!</p>
+    <span class="role-badge role-student">Student</span>
+
+    <section class="portal-placeholder">
+        <h2>Student Portal</h2>
+        <p>The student portal is coming in a future milestone. You will be able to view your assignments, track your progress, and identify areas to focus on here.</p>
+    </section>
+
+    <a href="{{ url_for('logout') }}" class="btn-logout">Log Out</a>
+</div>
+{% endblock %}
