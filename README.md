@@ -47,14 +47,18 @@ pip install flask==3.1.0
 
 ## Database Setup
 
-### Initialise the database and seed all 21 sample accounts
+### Initialise the database and seed all sample accounts and content
 
 ```powershell
 python seed.py
 ```
 
-This creates `mindtrace.db` in the project folder and inserts the sample accounts.
-It is safe to run multiple times — it will never create duplicate accounts.
+This creates `mindtrace.db`, creates all 28 tables, inserts the 21 sample user
+accounts, and seeds a small set of sample content (subject, class, section,
+textbook, chapters, concepts, prerequisite, and textbook pages).
+
+It is safe to run multiple times — all inserts use `INSERT OR IGNORE` and will
+never create duplicates.
 
 ---
 
@@ -76,7 +80,14 @@ To stop the application press `Ctrl+C` in the terminal.
 python -m unittest discover -s tests -v
 ```
 
-All 9 tests should pass. Tests use an in-memory database and do not affect `mindtrace.db`.
+37 tests should pass across two suites:
+
+| Suite | File | Tests | Covers |
+|-------|------|-------|--------|
+| Authentication | `tests/test_auth.py` | 9 | Login, logout, role routing, session protection |
+| Schema | `tests/test_schema.py` | 28 | Table existence, columns, constraints, append-only triggers |
+
+Tests use separate temporary database files and do not affect `mindtrace.db`.
 
 ---
 
@@ -113,21 +124,47 @@ All 9 tests should pass. Tests use an in-memory database and do not affect `mind
 ```
 MindTrace\
 ├── app.py                       # Flask routes and authentication logic
-├── database.py                  # SQLite connection and schema setup
-├── seed.py                      # Creates sample accounts
-├── requirements.txt             # Pinned dependencies
+├── database.py                  # SQLite connection, schema setup, and triggers
+├── seed.py                      # Creates sample accounts and content
+├── requirements.txt             # Pinned dependencies (flask==3.1.0)
 ├── mindtrace.db                 # SQLite database file (created by seed.py)
 ├── README.md                    # This file
 ├── templates\
 │   ├── base.html                # Shared page layout
 │   ├── login.html               # Login form
 │   ├── teacher_dashboard.html   # Teacher welcome page
-│   └── student_dashboard.html  # Student welcome page
+│   └── student_dashboard.html   # Student welcome page
 ├── static\
 │   └── style.css                # Application styles
 └── tests\
-    └── test_auth.py             # Authentication tests
+    ├── test_auth.py             # Authentication tests
+    └── test_schema.py           # Schema and trigger tests
 ```
+
+---
+
+## Database Schema
+
+The database has 28 tables across 7 groups:
+
+| Group | Tables |
+|-------|--------|
+| Core | `users` |
+| Organisational | `subjects`, `classes`, `sections`, `student_sections`, `seat_positions`, `teacher_assignments` |
+| Textbook content | `textbooks`, `chapters`, `concepts`, `textbook_pages`, `page_concepts`, `concept_prerequisites` |
+| Lesson coverage | `lessons`, `lesson_concepts` |
+| Check-ins and diagnostics | `student_checkins`, `teacher_observations`, `diagnostic_questions`, `diagnostic_responses` |
+| Assessments | `class_tests`, `test_concepts`, `test_results` |
+| Evidence and concerns | `learning_evidence`, `learning_concerns`, `concern_evidence`, `concern_reviews` |
+| Derived aggregates | `student_learning_profiles`, `class_daily_reports` |
+
+**Append-only tables:** `learning_evidence` and `concern_reviews` are protected
+by SQLite triggers that reject any `UPDATE`, `DELETE`, or `INSERT OR REPLACE`
+on existing rows. These tables can only grow.
+
+Every connection from `get_db()` enables:
+- `PRAGMA foreign_keys = ON` — enforces all foreign key constraints
+- `PRAGMA recursive_triggers = ON` — ensures `REPLACE` operations cannot bypass triggers
 
 ---
 
@@ -138,3 +175,6 @@ MindTrace\
 - `app.secret_key` in `app.py` is a development value. Change it before any public deployment.
 - The application runs in debug mode (`debug=True`) during development, which auto-reloads on file changes.
   Set `debug=False` if you ever run this on a shared network.
+- All timestamps are stored as ISO 8601 text (`YYYY-MM-DD` for dates,
+  `YYYY-MM-DDTHH:MM:SS` for datetimes). The application must supply them in
+  this format consistently.
