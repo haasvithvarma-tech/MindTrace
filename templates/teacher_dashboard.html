@@ -1,16 +1,115 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="dashboard-card">
+<div class="dashboard-card" style="max-width: 800px;">
     <h1 class="dashboard-title">MindTrace</h1>
     <p class="welcome-message">Welcome, <strong>{{ username }}</strong>!</p>
-    <span class="role-badge role-teacher">Teacher</span>
+    <span class="role-badge role-teacher">Teacher Portal</span>
 
-    <section class="portal-placeholder">
-        <h2>Teacher Portal</h2>
-        <p>The teacher portal is coming in a future milestone. You will be able to view student progress, identify learning gaps, and manage assignments here.</p>
+    <section style="margin-top: 2rem;">
+        <h2>Record a Lesson</h2>
+        <form method="POST" action="{{ url_for('record_lesson') }}" style="margin-top: 1rem;">
+            <div class="form-group">
+                <label for="section_id">Class / Section</label>
+                <select name="section_id" id="section_id" required style="width: 100%; padding: 0.6rem; border: 1px solid #d1d5db; border-radius: 0.375rem;">
+                    {% for s in sections %}
+                    <option value="{{ s.id }}">{{ s.class_name }} — Section {{ s.section_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="textbook_id">Textbook & Subject</label>
+                <select name="textbook_id" id="textbook_id" required style="width: 100%; padding: 0.6rem; border: 1px solid #d1d5db; border-radius: 0.375rem;" onchange="loadConcepts(this.value)">
+                    <option value="">-- Select Textbook --</option>
+                    {% for t in textbooks %}
+                    <option value="{{ t.id }}">{{ t.title }} ({{ t.subject_name }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="lesson_date">Lesson Date</label>
+                <input type="date" name="lesson_date" id="lesson_date" required style="width: 100%; padding: 0.6rem; border: 1px solid #d1d5db; border-radius: 0.375rem;">
+            </div>
+
+            <div class="form-group">
+                <label for="notes">Lesson Notes / Page Range</label>
+                <input type="text" name="notes" id="notes" placeholder="e.g. Pages 12-15: Integers & Number Line" style="width: 100%; padding: 0.6rem; border: 1px solid #d1d5db; border-radius: 0.375rem;">
+            </div>
+
+            <div class="form-group">
+                <label>Concepts Covered</label>
+                <div id="concepts-container" style="background: #f8fafc; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 0.375rem; max-height: 200px; overflow-y: auto;">
+                    <p style="color: #64748b; font-size: 0.9rem;">Please select a textbook above to load available concepts.</p>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-primary" style="margin-top: 1rem;">Save Lesson & Concepts</button>
+        </form>
     </section>
 
-    <a href="{{ url_for('logout') }}" class="btn-logout">Log Out</a>
+    <section style="margin-top: 3rem;">
+        <h2>Recent Lessons</h2>
+        {% if lessons %}
+        <table style="width: 100%; margin-top: 1rem; border-collapse: collapse; font-size: 0.9rem;">
+            <thead>
+                <tr style="background: #f1f5f9; text-align: left;">
+                    <th style="padding: 0.5rem; border-bottom: 1px solid #cbd5e1;">Date</th>
+                    <th style="padding: 0.5rem; border-bottom: 1px solid #cbd5e1;">Section</th>
+                    <th style="padding: 0.5rem; border-bottom: 1px solid #cbd5e1;">Subject</th>
+                    <th style="padding: 0.5rem; border-bottom: 1px solid #cbd5e1;">Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for l in lessons %}
+                <tr>
+                    <td style="padding: 0.5rem; border-bottom: 1px solid #e2e8f0;">{{ l.lesson_date }}</td>
+                    <td style="padding: 0.5rem; border-bottom: 1px solid #e2e8f0;">{{ l.class_name }} {{ l.section_name }}</td>
+                    <td style="padding: 0.5rem; border-bottom: 1px solid #e2e8f0;">{{ l.subject_name }}</td>
+                    <td style="padding: 0.5rem; border-bottom: 1px solid #e2e8f0;">{{ l.notes or '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="color: #64748b; margin-top: 0.5rem;">No lessons recorded yet.</p>
+        {% endif %}
+    </section>
+
+    <div style="margin-top: 2rem;">
+        <a href="{{ url_for('logout') }}" class="btn-logout">Log Out</a>
+    </div>
 </div>
+
+<script>
+function loadConcepts(textbookId) {
+    const container = document.getElementById('concepts-container');
+    if (!textbookId) {
+        container.innerHTML = '<p style="color: #64748b; font-size: 0.9rem;">Please select a textbook above to load available concepts.</p>';
+        return;
+    }
+
+    container.innerHTML = '<p style="color: #64748b; font-size: 0.9rem;">Loading concepts...</p>';
+    fetch(`/textbook/${textbookId}/concepts`)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.concepts || data.concepts.length === 0) {
+                container.innerHTML = '<p style="color: #64748b; font-size: 0.9rem;">No concepts found for this textbook.</p>';
+                return;
+            }
+            let html = '';
+            data.concepts.forEach(c => {
+                html += `<label style="display: block; margin-bottom: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="concept_ids" value="${c.id}" style="margin-right: 0.5rem;">
+                    <strong>${c.name}</strong> <span style="color: #64748b; font-size: 0.85rem;">(${c.chapter_title})</span>
+                </label>`;
+            });
+            container.innerHTML = html;
+        })
+        .catch(err => {
+            container.innerHTML = '<p style="color: #dc2626; font-size: 0.9rem;">Error loading concepts.</p>';
+        });
+}
+</script>
 {% endblock %}
