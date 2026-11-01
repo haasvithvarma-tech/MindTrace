@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from werkzeug.security import generate_password_hash
 from database import init_db, get_db
 
@@ -173,6 +174,54 @@ def seed_content():
           "concepts, pages inserted (or already existed).")
 
 
+def seed_grade_data():
+    """Set grade_level on seeded textbook and insert provisional grade boundaries.
+
+    Provisional max_lookback_grades values (configurable in subject_grade_boundaries):
+      Mathematics: 1, Science: 2, Physics: 1, Chemistry: 1, Social Science: 2
+
+    Idempotent — UPDATE and INSERT OR IGNORE throughout. Never uses hardcoded IDs.
+    """
+    conn = get_db()
+    now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat(timespec="seconds")
+
+    # Set grade_level = 7 for the seeded Mathematics Grade 7 textbook
+    conn.execute(
+        "UPDATE textbooks SET grade_level = 7 WHERE title = 'Mathematics Grade 7'"
+    )
+
+    # Provisional grade boundaries — only insert rows for subjects that exist
+    boundaries = [
+        ("Mathematics",    1),
+        ("Science",        2),
+        ("Physics",        1),
+        ("Chemistry",      1),
+        ("Social Science", 2),
+    ]
+    for subject_name, max_lookback in boundaries:
+        row = conn.execute(
+            "SELECT id FROM subjects WHERE name = ?", (subject_name,)
+        ).fetchone()
+        if row is None:
+            continue  # Subject not yet seeded — skip silently
+        conn.execute(
+            """
+            INSERT INTO subject_grade_boundaries
+                (subject_id, max_lookback_grades, updated_at)
+            VALUES (?, ?, ?)
+            ON CONFLICT(subject_id) DO UPDATE SET
+                max_lookback_grades = excluded.max_lookback_grades,
+                updated_at = excluded.updated_at
+            """,
+            (row["id"], max_lookback, now),
+        )
+
+    conn.commit()
+    conn.close()
+    print("Seed grade data: grade_level and subject boundaries updated.")
+
+
 if __name__ == "__main__":
     seed()
     seed_content()
+    seed_grade_data()

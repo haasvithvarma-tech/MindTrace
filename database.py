@@ -50,6 +50,19 @@ def init_db():
         )
     """)
 
+    # Grade boundary configuration: one row per subject.
+    # max_lookback_grades defines how many grades back prerequisite tracing
+    # is permitted. Read by graph.py — never hardcoded there.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS subject_grade_boundaries (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            subject_id          INTEGER NOT NULL REFERENCES subjects(id) UNIQUE,
+            max_lookback_grades INTEGER NOT NULL DEFAULT 1
+                                CHECK(max_lookback_grades >= 1),
+            updated_at          TEXT    NOT NULL
+        )
+    """)
+
     conn.execute("""
         CREATE TABLE IF NOT EXISTS classes (
             id   INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -103,13 +116,22 @@ def init_db():
 
     conn.execute("""
         CREATE TABLE IF NOT EXISTS textbooks (
-            id         INTEGER PRIMARY KEY AUTOINCREMENT,
-            subject_id INTEGER NOT NULL REFERENCES subjects(id),
-            title      TEXT    NOT NULL,
-            edition    TEXT,
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            subject_id  INTEGER NOT NULL REFERENCES subjects(id),
+            title       TEXT    NOT NULL,
+            edition     TEXT,
+            grade_level INTEGER,
             UNIQUE (subject_id, title, edition)
         )
     """)
+
+    # Migration guard: add grade_level to textbooks if the column is absent.
+    # Handles existing databases created before Milestone 3.
+    existing_cols = [
+        r[1] for r in conn.execute("PRAGMA table_info(textbooks)").fetchall()
+    ]
+    if "grade_level" not in existing_cols:
+        conn.execute("ALTER TABLE textbooks ADD COLUMN grade_level INTEGER")
 
     conn.execute("""
         CREATE TABLE IF NOT EXISTS chapters (
