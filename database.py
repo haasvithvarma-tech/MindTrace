@@ -192,9 +192,20 @@ def init_db():
             section_id  INTEGER NOT NULL REFERENCES sections(id),
             subject_id  INTEGER NOT NULL REFERENCES subjects(id),
             lesson_date TEXT    NOT NULL,
-            notes       TEXT
+            notes       TEXT,
+            page_start  INTEGER,
+            page_end    INTEGER
         )
     """)
+
+    # Migration guard: add page_start and page_end to lessons if absent.
+    existing_lesson_cols = [
+        r[1] for r in conn.execute("PRAGMA table_info(lessons)").fetchall()
+    ]
+    if "page_start" not in existing_lesson_cols:
+        conn.execute("ALTER TABLE lessons ADD COLUMN page_start INTEGER")
+    if "page_end" not in existing_lesson_cols:
+        conn.execute("ALTER TABLE lessons ADD COLUMN page_end INTEGER")
 
     conn.execute("""
         CREATE TABLE IF NOT EXISTS lesson_concepts (

@@ -221,7 +221,42 @@ def seed_grade_data():
     print("Seed grade data: grade_level and subject boundaries updated.")
 
 
+def seed_enrolments():
+    """Enrol all sample students in Grade 7, Section 7-A.
+    Idempotent — INSERT OR IGNORE, using dynamic database lookups.
+    """
+    conn = get_db()
+    section = conn.execute(
+        """SELECT s.id FROM sections s
+           JOIN classes c ON c.id = s.class_id
+           WHERE c.name = 'Grade 7' AND s.name = '7-A'"""
+    ).fetchone()
+    if not section:
+        conn.close()
+        return
+    section_id = section["id"]
+
+    students = conn.execute(
+        "SELECT id FROM users WHERE role = 'student'"
+    ).fetchall()
+
+    enrolled_at = datetime.now(timezone.utc).replace(tzinfo=None).isoformat(timespec="seconds")
+    inserted = 0
+    for s in students:
+        cursor = conn.execute(
+            "INSERT OR IGNORE INTO student_sections (student_id, section_id, enrolled_at) VALUES (?, ?, ?)",
+            (s["id"], section_id, enrolled_at)
+        )
+        if cursor.rowcount == 1:
+            inserted += 1
+
+    conn.commit()
+    conn.close()
+    print(f"Seed enrolments: {inserted} new student enrolments added.")
+
+
 if __name__ == "__main__":
     seed()
     seed_content()
     seed_grade_data()
+    seed_enrolments()

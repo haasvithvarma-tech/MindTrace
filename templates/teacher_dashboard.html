@@ -33,9 +33,20 @@
                 <input type="date" name="lesson_date" id="lesson_date" required style="width: 100%; padding: 0.6rem; border: 1px solid #d1d5db; border-radius: 0.375rem;">
             </div>
 
+            <div class="form-group" style="display: flex; gap: 1rem;">
+                <div style="flex: 1;">
+                    <label for="page_start">Start Page</label>
+                    <input type="number" name="page_start" id="page_start" placeholder="e.g. 12" style="width: 100%; padding: 0.6rem; border: 1px solid #d1d5db; border-radius: 0.375rem;">
+                </div>
+                <div style="flex: 1;">
+                    <label for="page_end">End Page</label>
+                    <input type="number" name="page_end" id="page_end" placeholder="e.g. 15" style="width: 100%; padding: 0.6rem; border: 1px solid #d1d5db; border-radius: 0.375rem;">
+                </div>
+            </div>
+
             <div class="form-group">
-                <label for="notes">Lesson Notes / Page Range</label>
-                <input type="text" name="notes" id="notes" placeholder="e.g. Pages 12-15: Integers & Number Line" style="width: 100%; padding: 0.6rem; border: 1px solid #d1d5db; border-radius: 0.375rem;">
+                <label for="notes">Lesson Notes / Summary</label>
+                <input type="text" name="notes" id="notes" placeholder="e.g. Integers & Number Line overview" style="width: 100%; padding: 0.6rem; border: 1px solid #d1d5db; border-radius: 0.375rem;">
             </div>
 
             <div class="form-group">
@@ -58,6 +69,7 @@
                     <th style="padding: 0.5rem; border-bottom: 1px solid #cbd5e1;">Date</th>
                     <th style="padding: 0.5rem; border-bottom: 1px solid #cbd5e1;">Section</th>
                     <th style="padding: 0.5rem; border-bottom: 1px solid #cbd5e1;">Subject</th>
+                    <th style="padding: 0.5rem; border-bottom: 1px solid #cbd5e1;">Pages</th>
                     <th style="padding: 0.5rem; border-bottom: 1px solid #cbd5e1;">Notes</th>
                 </tr>
             </thead>
@@ -67,6 +79,15 @@
                     <td style="padding: 0.5rem; border-bottom: 1px solid #e2e8f0;">{{ l.lesson_date }}</td>
                     <td style="padding: 0.5rem; border-bottom: 1px solid #e2e8f0;">{{ l.class_name }} {{ l.section_name }}</td>
                     <td style="padding: 0.5rem; border-bottom: 1px solid #e2e8f0;">{{ l.subject_name }}</td>
+                    <td style="padding: 0.5rem; border-bottom: 1px solid #e2e8f0;">
+                        {% if l.page_start and l.page_end %}
+                            p. {{ l.page_start }}–{{ l.page_end }}
+                        {% elif l.page_start %}
+                            p. {{ l.page_start }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
                     <td style="padding: 0.5rem; border-bottom: 1px solid #e2e8f0;">{{ l.notes or '-' }}</td>
                 </tr>
                 {% endfor %}
